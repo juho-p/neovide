@@ -91,7 +91,12 @@ pub fn ui_loop() {
                 event: WindowEvent::ReceivedCharacter(chr),
                 ..
             } => {
-                let command = UiCommand::Keyboard(chr.to_string());
+                let command = UiCommand::Keyboard(
+                    match chr {
+                        '<' => "<lt>".to_string(),
+                        _ => chr.to_string(),
+                    }
+                );
                 BRIDGE.queue_command(command);
             },
 
