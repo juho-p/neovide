@@ -88,15 +88,11 @@ pub fn ui_loop() {
             },
 
             Event::WindowEvent {
-                event: WindowEvent::KeyboardInput {
-                    input,
-                    ..
-                },
+                event: WindowEvent::ReceivedCharacter(chr),
                 ..
             } => {
-                construct_keybinding_string(input)
-                    .map(UiCommand::Keyboard)
-                    .map(|keybinding_string| BRIDGE.queue_command(keybinding_string));
+                let command = UiCommand::Keyboard(chr.to_string());
+                BRIDGE.queue_command(command);
             },
 
             Event::WindowEvent {
