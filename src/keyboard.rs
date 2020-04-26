@@ -57,9 +57,9 @@ pub fn transform_keycode(code: VirtualKeyCode, modifiers: &ModifiersState) -> Op
 
     key_str.map(|s| {
         if modifier.is_empty() {
-            format!("<{}-{}>", modifier, s)
-        } else {
             format!("<{}>", s)
+        } else {
+            format!("<{}-{}>", modifier, s)
         }
     })
 }
