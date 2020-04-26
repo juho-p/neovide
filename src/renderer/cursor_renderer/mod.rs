@@ -113,7 +113,10 @@ impl Corner {
     ) -> bool {
         if destination != self.previous_destination {
             self.t = 0.0;
-            self.start_position = self.current_position;
+            // TODO figure out why current_position can be NaN sometimes
+            if self.current_position.x.is_finite() && self.current_position.y.is_finite() {
+                self.start_position = self.current_position;
+            }
             self.previous_destination = destination;
         }
 
