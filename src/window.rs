@@ -15,7 +15,7 @@ use skulpin::{
 use std::sync::atomic::Ordering;
 
 use crate::bridge::{UiCommand, BRIDGE};
-use crate::keyboard;
+use crate::keys;
 use crate::redraw_scheduler::REDRAW_SCHEDULER;
 use crate::renderer::Renderer;
 use crate::settings::*;
@@ -334,7 +334,7 @@ pub fn ui_loop() {
                 ),
 
                 WindowEvent::ReceivedCharacter(c) => {
-                    if let Some(input) = keyboard::transform_character(c, &modifiers) {
+                    if let Some(input) = keys::transform_character(c, &modifiers) {
                         window.handle_keyboard_input(input)
                     }
                 }
@@ -346,7 +346,7 @@ pub fn ui_loop() {
                 WindowEvent::KeyboardInput { input, .. } => {
                     if input.state == ElementState::Pressed {
                         if let Some(code) = input.virtual_keycode {
-                            if let Some(input) = keyboard::transform_keycode(code, &modifiers) {
+                            if let Some(input) = keys::transform_keycode(code, &modifiers) {
                                 window.handle_keyboard_input(input)
                             }
                         }

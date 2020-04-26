@@ -2,11 +2,12 @@ use skulpin::winit::event::{ModifiersState, VirtualKeyCode};
 
 pub fn transform_character(c: char, modifiers: &ModifiersState) -> Option<String> {
     let modifier = if modifiers.alt() { "M" }
-        // don't handle ctrl here
+        // don't handle ctrl or shift here
         else { "" };
 
     match c {
         '\u{7f}' => None, // Del
+        '\t' => None,
         '<' => Some(if modifier.is_empty() {
             "<lt>".to_string()
         } else {
@@ -25,6 +26,8 @@ pub fn transform_keycode(code: VirtualKeyCode, modifiers: &ModifiersState) -> Op
         "M"
     } else if modifiers.ctrl() {
         "C"
+    } else if modifiers.shift() {
+        "S"
     } else {
         ""
     };
@@ -52,6 +55,7 @@ pub fn transform_keycode(code: VirtualKeyCode, modifiers: &ModifiersState) -> Op
         VirtualKeyCode::Down => Some("Down"),
         VirtualKeyCode::Left => Some("Left"),
         VirtualKeyCode::Right => Some("Right"),
+        VirtualKeyCode::Tab => Some("Tab"),
         _ => None,
     };
 
