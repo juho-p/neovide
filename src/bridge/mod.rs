@@ -1,5 +1,4 @@
 #[macro_use]
-pub mod layouts;
 
 mod events;
 mod handler;
@@ -21,7 +20,6 @@ use crate::settings::*;
 use crate::window::window_geometry_or_default;
 pub use events::*;
 use handler::NeovimHandler;
-pub use layouts::*;
 pub use ui_commands::UiCommand;
 
 lazy_static! {
