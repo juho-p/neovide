@@ -6,6 +6,7 @@ mod settings;
 mod bridge;
 mod editor;
 mod error_handling;
+mod keyboard;
 mod redraw_scheduler;
 mod renderer;
 mod window;

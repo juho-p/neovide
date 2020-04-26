@@ -1,24 +1,23 @@
 use std::time::{Duration, Instant};
 
-use std::sync::atomic::Ordering;
 use image::{load_from_memory, GenericImageView, Pixel};
-use skulpin::{
-    CoordinateSystem,
-    RendererBuilder,
-    PresentMode,
-    PhysicalSize,
-    Renderer as SkulpinRenderer,
-};
+use log::{debug, error, info, trace};
 use skulpin::winit;
-use skulpin::winit::dpi::{LogicalSize};
-use skulpin::winit::event::{ElementState, Event, MouseScrollDelta, StartCause, WindowEvent};
+use skulpin::winit::dpi::LogicalSize;
+use skulpin::winit::event::{
+    ElementState, Event, ModifiersState, MouseScrollDelta, StartCause, WindowEvent,
+};
 use skulpin::winit::event_loop::{ControlFlow, EventLoop};
 use skulpin::winit::window::{Icon, WindowBuilder};
-use log::{info, debug, trace, error};
+use skulpin::{
+    CoordinateSystem, PhysicalSize, PresentMode, Renderer as SkulpinRenderer, RendererBuilder,
+};
+use std::sync::atomic::Ordering;
 
-use crate::bridge::{BRIDGE, UiCommand};
-use crate::renderer::Renderer;
+use crate::bridge::{UiCommand, BRIDGE};
+use crate::keyboard;
 use crate::redraw_scheduler::REDRAW_SCHEDULER;
+use crate::renderer::Renderer;
 use crate::settings::*;
 use crate::INITIAL_DIMENSIONS;
 
@@ -150,11 +149,11 @@ impl WindowWrapper {
 
         //let transparency = { SETTINGS.get::<WindowSettings>().transparency };
         //if let Ok(opacity) = self.window.opacity() {
-            // TODO for winit?
-            //if opacity != transparency {
-            //    self.window.set_opacity(transparency).ok();
-            //    self.transparency = transparency;
-            //}
+        // TODO for winit?
+        //if opacity != transparency {
+        //    self.window.set_opacity(transparency).ok();
+        //    self.transparency = transparency;
+        //}
         //}
 
         let fullscreen = { SETTINGS.get::<WindowSettings>().fullscreen };
@@ -257,15 +256,21 @@ impl WindowWrapper {
         if REDRAW_SCHEDULER.should_draw() || SETTINGS.get::<WindowSettings>().no_idle {
             let renderer = &mut self.renderer;
 
-            let size = self.window.inner_size().to_logical(self.window.scale_factor());
+            let size = self
+                .window
+                .inner_size()
+                .to_logical(self.window.scale_factor());
 
-            if self.skulpin_renderer.draw(&window, |canvas, coordinate_system_helper| {
-                let dt = 1.0 / (SETTINGS.get::<WindowSettings>().refresh_rate as f32);
+            if self
+                .skulpin_renderer
+                .draw(&window, |canvas, coordinate_system_helper| {
+                    let dt = 1.0 / (SETTINGS.get::<WindowSettings>().refresh_rate as f32);
 
-                if renderer.draw(canvas, &coordinate_system_helper, dt) {
-                    handle_new_grid_size(size, renderer);
-                }
-            }).is_err()
+                    if renderer.draw(canvas, &coordinate_system_helper, dt) {
+                        handle_new_grid_size(size, renderer);
+                    }
+                })
+                .is_err()
             {
                 error!("Render failed.");
                 return false;
@@ -307,74 +312,86 @@ pub fn ui_loop() {
 
     let mut window = WindowWrapper::new(&event_loop);
 
+    let mut modifiers = ModifiersState::empty();
+
     event_loop.run(move |event, _window_target, control_flow| {
         trace!("Window Event: {:?}", event);
         match event {
-            Event::NewEvents(StartCause::Init) |
-            Event::NewEvents(StartCause::ResumeTimeReached { .. }) => {
+            Event::NewEvents(StartCause::Init)
+            | Event::NewEvents(StartCause::ResumeTimeReached { .. }) => {
                 window.window.request_redraw()
-            },
+            }
 
-            Event::WindowEvent { event, .. } => {
-                match event {
-                    WindowEvent::CloseRequested => {
-                        window.handle_quit();
-                        *control_flow = ControlFlow::Exit;
-                    },
+            Event::WindowEvent { event, .. } => match event {
+                WindowEvent::CloseRequested => {
+                    window.handle_quit();
+                    *control_flow = ControlFlow::Exit;
+                }
 
-                    WindowEvent::Resized(new_size) => {
-                        handle_new_grid_size(new_size.to_logical(window.window.scale_factor()), &window.renderer)
-                    },
+                WindowEvent::Resized(new_size) => handle_new_grid_size(
+                    new_size.to_logical(window.window.scale_factor()),
+                    &window.renderer,
+                ),
 
-                    WindowEvent::ReceivedCharacter(c) => {
-                        window.handle_keyboard_input(
-                            match c {
-                                '<' => "<lt>".to_string(),
-                                _ => c.to_string()
+                WindowEvent::ReceivedCharacter(c) => {
+                    if let Some(input) = keyboard::transform_character(c) {
+                        window.handle_keyboard_input(input)
+                    }
+                }
+
+                WindowEvent::ModifiersChanged(new_state) => {
+                    modifiers = new_state;
+                }
+
+                WindowEvent::KeyboardInput { input, .. } => {
+                    if input.state == ElementState::Pressed {
+                        if let Some(code) = input.virtual_keycode {
+                            if let Some(input) = keyboard::transform_keycode(code) {
+                                window.handle_keyboard_input(input)
                             }
-                        );
-                    },
-
-                    WindowEvent::CursorMoved { position, .. } => {
-                        if position.x >= 0.0 && position.y >= 0.0 {
-                            window.handle_pointer_motion(position.x as u32, position.y as u32);
-                        }
-                    },
-
-                    WindowEvent::MouseInput { state, .. } => {
-                        match state {
-                            ElementState::Pressed => {
-                                window.handle_pointer_down();
-                            },
-                            ElementState::Released => {
-                                window.handle_pointer_up();
-                            },
-                        };
-                    },
-                    WindowEvent::MouseWheel {
-                        delta: MouseScrollDelta::LineDelta(horizontal, vertical),
-                        ..
-                    } => {
-                        window.handle_mouse_wheel(horizontal, vertical);
-                    },
-
-                    WindowEvent::Focused(focused) => {
-                        if focused {
-                            window.handle_focus_gained();
-                        } else {
-                            window.handle_focus_lost();
-                        }
-                    },
-
-                    WindowEvent::DroppedFile(path) => {
-                        if let Some(valid_str) = path.to_str() {
-                            BRIDGE.queue_command(UiCommand::FileDrop(valid_str.to_string()));
                         }
                     }
-
-                    _ => ()
                 }
-            }
+
+                WindowEvent::CursorMoved { position, .. } => {
+                    if position.x >= 0.0 && position.y >= 0.0 {
+                        window.handle_pointer_motion(position.x as u32, position.y as u32);
+                    }
+                }
+
+                WindowEvent::MouseInput { state, .. } => {
+                    match state {
+                        ElementState::Pressed => {
+                            window.handle_pointer_down();
+                        }
+                        ElementState::Released => {
+                            window.handle_pointer_up();
+                        }
+                    };
+                }
+                WindowEvent::MouseWheel {
+                    delta: MouseScrollDelta::LineDelta(horizontal, vertical),
+                    ..
+                } => {
+                    window.handle_mouse_wheel(horizontal, vertical);
+                }
+
+                WindowEvent::Focused(focused) => {
+                    if focused {
+                        window.handle_focus_gained();
+                    } else {
+                        window.handle_focus_lost();
+                    }
+                }
+
+                WindowEvent::DroppedFile(path) => {
+                    if let Some(valid_str) = path.to_str() {
+                        BRIDGE.queue_command(UiCommand::FileDrop(valid_str.to_string()));
+                    }
+                }
+
+                _ => (),
+            },
 
             Event::RedrawRequested { .. } => {
                 let frame_start = Instant::now();
@@ -387,7 +404,7 @@ pub fn ui_loop() {
                     // XXX this is propably not right way to exit
                     std::process::exit(0);
                 }
-            },
+            }
 
             _ => {}
         }
