@@ -1,15 +1,35 @@
-use skulpin::winit::event::{VirtualKeyCode};
+use skulpin::winit::event::{ModifiersState, VirtualKeyCode};
 
-pub fn transform_character(c: char) -> Option<String> {
+pub fn transform_character(c: char, modifiers: &ModifiersState) -> Option<String> {
+    let modifier = if modifiers.alt() { "M" }
+        // don't handle ctrl here
+        else { "" };
+
     match c {
-        '<' => Some("<lt>".to_string()),
         '\u{7f}' => None, // Del
-        _ => Some(c.to_string()),
+        '<' => Some(if modifier.is_empty() {
+            "<lt>".to_string()
+        } else {
+            format!("<{}-lt>", modifier)
+        }),
+        _ => Some(if modifier.is_empty() {
+            c.to_string()
+        } else {
+            format!("<{}-{}>", modifier, c)
+        }),
     }
 }
 
-pub fn transform_keycode(code: VirtualKeyCode) -> Option<String> {
-    let s = match code {
+pub fn transform_keycode(code: VirtualKeyCode, modifiers: &ModifiersState) -> Option<String> {
+    let modifier = if modifiers.alt() {
+        "M"
+    } else if modifiers.ctrl() {
+        "C"
+    } else {
+        ""
+    };
+
+    let key_str = match code {
         VirtualKeyCode::F1 => Some("F1"),
         VirtualKeyCode::F2 => Some("F2"),
         VirtualKeyCode::F3 => Some("F3"),
@@ -35,5 +55,11 @@ pub fn transform_keycode(code: VirtualKeyCode) -> Option<String> {
         _ => None,
     };
 
-    s.map(|s| format!("<{}>", s))
+    key_str.map(|s| {
+        if modifier.is_empty() {
+            format!("<{}-{}>", modifier, s)
+        } else {
+            format!("<{}>", s)
+        }
+    })
 }
