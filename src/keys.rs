@@ -22,24 +22,24 @@ pub fn transform_character(c: char, modifiers: &ModifiersState) -> Option<String
 }
 
 pub fn transform_keycode(code: VirtualKeyCode, modifiers: &ModifiersState) -> Option<String> {
-    let modifier = if modifiers.alt() {
-        "M"
-    } else if modifiers.ctrl() {
-        "C"
-    } else if modifiers.shift() {
-        "S"
-    } else {
-        ""
-    };
 
     if code == VirtualKeyCode::I && modifiers.ctrl() {
         // Hack to get ctrl-i working
         return Some(format!(
-            "<C-{}{}",
+            "<C-{}{}>",
             if modifiers.alt() { "M-" } else { "" },
             if modifiers.shift() { "I" } else { "i" }
         ));
     }
+
+    let modifier = [
+        ("C", modifiers.ctrl()),
+        ("M", modifiers.alt()),
+        ("S", modifiers.shift()),
+    ].iter()
+        .filter(|x| x.1)
+        .map(|x| x.0)
+        .collect::<Vec<_>>().join("-");
 
     let key_str = match code {
         VirtualKeyCode::F1 => Some("F1"),

@@ -335,6 +335,7 @@ pub fn ui_loop() {
 
                 WindowEvent::ReceivedCharacter(c) => {
                     if let Some(input) = keys::transform_character(c, &modifiers) {
+                        //println!("Key (rc) {:?}", input);
                         window.handle_keyboard_input(input)
                     }
                 }
@@ -347,6 +348,7 @@ pub fn ui_loop() {
                     if input.state == ElementState::Pressed {
                         if let Some(code) = input.virtual_keycode {
                             if let Some(input) = keys::transform_keycode(code, &modifiers) {
+                        //println!("Key (ki) {:?}", input);
                                 window.handle_keyboard_input(input)
                             }
                         }
