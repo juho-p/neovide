@@ -32,6 +32,15 @@ pub fn transform_keycode(code: VirtualKeyCode, modifiers: &ModifiersState) -> Op
         ""
     };
 
+    if code == VirtualKeyCode::I && modifiers.ctrl() {
+        // Hack to get ctrl-i working
+        return Some(format!(
+            "<C-{}{}",
+            if modifiers.alt() { "M-" } else { "" },
+            if modifiers.shift() { "I" } else { "i" }
+        ));
+    }
+
     let key_str = match code {
         VirtualKeyCode::F1 => Some("F1"),
         VirtualKeyCode::F2 => Some("F2"),
@@ -56,6 +65,7 @@ pub fn transform_keycode(code: VirtualKeyCode, modifiers: &ModifiersState) -> Op
         VirtualKeyCode::Left => Some("Left"),
         VirtualKeyCode::Right => Some("Right"),
         VirtualKeyCode::Tab => Some("Tab"),
+
         _ => None,
     };
 
